@@ -36,22 +36,23 @@ public class BlogWriterController {
         var result = blogWriterService.generateBlogPostWithMetadata(topic);
 
         return Map.of("topic", topic,
-                "content", result.getContent(),
+                "content", result.content(),
                 "metadata", createMetadataObject(result));
     }
 
-    private Map<String, Object> createMetadataObject(BlogGenerationResult result) {
+    //private Map<String, Object> createMetadataObject(BlogGenerationResult result) {
+    private Map<String, Object> createMetadataObject(BlogGeneration result) {
         Map<String, Object> metadata = new HashMap<>();
-        metadata.put("iterations", result.getIterations());
-        metadata.put("approved", result.isApproved());
-        metadata.put("totalTokensUsed", result.getTotalTokens());
+        metadata.put("iterations", result.iterations());
+        metadata.put("approved", result.approved());
+        metadata.put("totalTokensUsed", result.totalTokens());
 
-        if (result.getEditorFeedback() != null && !result.getEditorFeedback().isEmpty()) {
+        if (result.editorFeedback() != null && !result.editorFeedback().isEmpty()) {
             List<Map<String, Object>> feedbackHistory = new ArrayList<>();
 
-            for (int i = 0; i < result.getEditorFeedback().size(); i++) {
+            for (int i = 0; i < result.editorFeedback().size(); i++) {
                 Map<String, Object> feedbackEntry = Map.of("iteration", i + 1,
-                        "feedback", result.getEditorFeedback().get(i));
+                        "feedback", result.editorFeedback().get(i));
 
                 feedbackHistory.add(feedbackEntry);
             }
@@ -60,17 +61,17 @@ public class BlogWriterController {
         }
 
         // Include token usage statistics if available
-        if (result.getPromptTokens() > 0) {
-            Map<String, Object> tokenUsage = Map.of("promptTokens", result.getPromptTokens(),
-                    "completionTokens", result.getCompletionTokens(),
-                    "totalTokens", result.getTotalTokens());
+        if (result.promptTokens() > 0) {
+            Map<String, Object> tokenUsage = Map.of("promptTokens", result.promptTokens(),
+                    "completionTokens", result.completionTokens(),
+                    "totalTokens", result.totalTokens());
 
             metadata.put("tokenUsage", tokenUsage);
         }
 
         // Include model information if available
-        if (result.getModelName() != null) {
-            metadata.put("model", result.getModelName());
+        if (result.modelName() != null) {
+            metadata.put("model", result.modelName());
         }
 
         return metadata;

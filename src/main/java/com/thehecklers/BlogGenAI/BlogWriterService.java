@@ -6,6 +6,8 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+
 /*
     Mark's notes:
     Version 1 of this service was copied directly from the following training module:
@@ -189,18 +191,19 @@ public class BlogWriterService {
 
     /**
      * Enhanced version of generateBlogPost that also returns metadata about the generation process.
-     *
+     * <p>
      * This method ensures at least one feedback-improvement cycle occurs to demonstrate
      * the full evaluator-optimizer pattern in action, regardless of initial draft quality.
      *
      * @param topic The blog post topic
      * @return A BlogGenerationResult containing the content and metadata
      */
-    public BlogGenerationResult generateBlogPostWithMetadata(String topic) {
+    public BlogGeneration generateBlogPostWithMetadata(String topic) {
         logger.info("Starting blog generation with metadata for topic: {}", topic);
 
-        var result = new BlogGenerationResult();
-        result.setModelName("Azure OpenAI");
+        var totalPromptChars = 0L;
+        var totalCompletionChars = 0L;
+        var feedbackList = new ArrayList<String>();
 
         // PHASE 1: WRITER AGENT
         // Prompt the Writer agent to generate the initial blog draft
@@ -224,8 +227,8 @@ public class BlogWriterService {
                 .call()
                 .content();
 
-        // Estimate token usage as we can't directly access it
-        estimateTokenUsage(result, initialPrompt, draft);
+        totalPromptChars += initialPrompt.length();
+        totalCompletionChars += draft.length();
         logger.info("Initial draft successfully generated for topic: {}", topic);
 
         // PHASE 2: EVALUATION & REFINEMENT LOOP
@@ -275,7 +278,8 @@ public class BlogWriterService {
                 forceFirstIteration = false;
             }
 
-            estimateTokenUsage(result, evalPrompt, evaluation);
+            totalPromptChars += evalPrompt.length();
+            totalCompletionChars += evaluation.length();
 
             // Check if the Editor agent approves the draft
             if (evaluation.toUpperCase().contains("PASS") && iteration > 1) { // Only allow PASS after first iteration
@@ -286,7 +290,7 @@ public class BlogWriterService {
                 // Draft needs improvement, extract the specific feedback
                 var feedback = extractFeedback(evaluation);
                 logger.info("Editor feedback received (iteration {}): {}", iteration, feedback);
-                result.addEditorFeedback(feedback);
+                feedbackList.add(feedback);
 
                 // PHASE 2B: WRITER AGENT (REFINEMENT)
                 // Prompt the Writer agent to refine the draft based on the feedback
@@ -316,7 +320,8 @@ public class BlogWriterService {
                         .call()
                         .content();
 
-                estimateTokenUsage(result, refinePrompt, revisedDraft);
+                totalPromptChars += refinePrompt.length();
+                totalCompletionChars += revisedDraft.length();
                 draft = revisedDraft;
                 logger.info("Revised draft received for iteration {}", iteration);
             }
@@ -325,9 +330,15 @@ public class BlogWriterService {
 
         // PHASE 3: FINALIZATION
         // Set final result properties
-        result.setContent(draft);
-        result.setApproved(approved);
-        result.setIterations(iteration - 1);
+        // Estimating token counts for now (~4 characters per token)
+        var gen = new BlogGeneration(draft,
+                iteration - 1,
+                approved,
+                totalPromptChars / 4,
+                totalCompletionChars / 4,
+                (totalPromptChars + totalCompletionChars) / 4,
+                "Azure OpenAI",
+                feedbackList);
 
         if (!approved) {
             logger.warn("Maximum iterations ({}) reached without editor approval", MAX_ITERATIONS);
@@ -335,7 +346,7 @@ public class BlogWriterService {
             logger.info("Blog post generation completed successfully for topic: {}", topic);
         }
 
-        return result;
+        return gen;
     }
 
     /**
@@ -352,26 +363,5 @@ public class BlogWriterService {
         return idx != -1
                 ? evaluation.substring(idx + "NEEDS_IMPROVEMENT".length()).trim()
                 : evaluation;
-    }
-
-    /**
-     * Helper method to estimate token usage as we can't directly access it
-     * This is a rough estimation: approximately 4 characters per token
-     */
-    private void estimateTokenUsage(BlogGenerationResult result, String prompt, String response) {
-        try {
-            // Very rough estimation: ~4 characters per token
-            int estimatedPromptTokens = prompt.length() / 4;
-            int estimatedCompletionTokens = response.length() / 4;
-
-            result.addPromptTokens(estimatedPromptTokens);
-            result.addCompletionTokens(estimatedCompletionTokens);
-
-            logger.debug("Estimated token usage: prompt={}, completion={}, total={}",
-                    estimatedPromptTokens, estimatedCompletionTokens,
-                    estimatedPromptTokens + estimatedCompletionTokens);
-        } catch (Exception e) {
-            logger.warn("Failed to estimate token usage", e);
-        }
     }
 }
