@@ -6,6 +6,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.stereotype.Service;
 
+import javax.validation.constraints.NotNull;
 import java.util.ArrayList;
 
 /*
@@ -66,7 +67,7 @@ public class BlogWriterService {
 
         // PHASE 1: WRITER AGENT
         // Prompt the Writer agent to generate the initial blog draft
-        var initialPrompt = String.format("""
+        var prompt = String.format("""
             You are a professional blog writer. Write a well-structured, engaging blog post about "%s".
             The post should have a clear introduction, body paragraphs, and conclusion.
             Include relevant examples and maintain a conversational yet professional tone.
@@ -82,11 +83,11 @@ public class BlogWriterService {
         // Using Spring AI's fluent API to send the prompt and get the response
         logger.info("Sending initial draft generation prompt to AI model");
         var draft = chatClient.prompt()
-                .user(initialPrompt)
+                .user(prompt)
                 .call()
                 .content();
 
-        totalPromptChars += initialPrompt.length();
+        totalPromptChars += prompt.length();
         totalCompletionChars += draft.length();
         logger.info("Initial draft successfully generated for topic: {}", topic);
 
@@ -101,7 +102,7 @@ public class BlogWriterService {
 
             // PHASE 2A: EDITOR AGENT
             // Prompt the Editor agent to evaluate the current draft
-            var evalPrompt = String.format("""
+            prompt = String.format("""
                 You are a critical blog editor with extremely high standards. Evaluate the following blog draft and respond with either:
                 PASS - if the draft is exceptional, well-written, engaging, and complete
                 NEEDS_IMPROVEMENT - followed by specific, actionable feedback on what to improve
@@ -127,11 +128,11 @@ public class BlogWriterService {
             // Send the evaluation prompt to the AI model
             logger.info("Sending draft for editorial evaluation (iteration: {})", iteration);
             var evaluation = chatClient.prompt()
-                    .user(evalPrompt)
+                    .user(prompt)
                     .call()
                     .content();
 
-            totalPromptChars += evalPrompt.length();
+            totalPromptChars += prompt.length();
             totalCompletionChars += evaluation.length();
 
             // Check if the Editor agent approves the draft
@@ -209,8 +210,8 @@ public class BlogWriterService {
      * @param evaluation The full evaluation text from the Editor agent
      * @return Just the actionable feedback portion
      */
-    private String extractFeedback(String evaluation) {
-        if (evaluation == null) return "";
+    private String extractFeedback(@NotNull String evaluation) {
+        //if (evaluation == null) return "";
         int idx = evaluation.toUpperCase().indexOf("NEEDS_IMPROVEMENT");
 
         return idx != -1
