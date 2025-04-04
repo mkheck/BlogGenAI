@@ -22,7 +22,6 @@ import java.util.ArrayList;
     under the "AI" category. This is intended to be an informative exercise in AI capabilities and limitations.
  */
 @RestController
-@RequestMapping("/api/blog")
 public class BlogWriterController {
 
     private final BlogWriterService blogWriterService;
@@ -32,6 +31,11 @@ public class BlogWriterController {
     }
 
     @GetMapping
+    public String quickTest(@RequestParam(defaultValue = "Tell me a joke") String message) {
+        return blogWriterService.aiTest(message);
+    }
+
+    @GetMapping("/api/blog")
     public Map<String, Object> generateBlogPost(@RequestParam String topic) {
         var result = blogWriterService.generateBlogPostWithMetadata(topic);
 

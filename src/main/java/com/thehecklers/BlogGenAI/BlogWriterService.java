@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import javax.validation.constraints.NotNull;
@@ -33,22 +34,41 @@ import java.util.ArrayList;
 public class BlogWriterService {
     private static final int MAX_ITERATIONS = 3;
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
-    private final ChatClient chatClient;
+    //private final ChatClient ollamaClient;
+    private final ChatClient oaiClient;
+    private final ChatClient aoaiClient;
 
-    /**
-     * Initialize the service with a ChatClient that has SimpleLoggerAdvisor.
-     *
-     * The SimpleLoggerAdvisor automatically logs all AI interactions (prompts and responses)
-     * when the application's logging level is set to DEBUG for the advisor package.
-     *
-     * @param builder Builder for creating a configured ChatClient
-     */
-    public BlogWriterService(ChatClient.Builder builder) {
-        // Add SimpleLoggerAdvisor to log requests and responses for debugging
-        this.chatClient = builder
-                .defaultAdvisors(new SimpleLoggerAdvisor())
-                .build();
-        logger.info("BlogWriterService initialized with ChatClient and SimpleLoggerAdvisor");
+//    /**
+//     * Initialize the service with a ChatClient that has SimpleLoggerAdvisor.
+//     *
+//     * The SimpleLoggerAdvisor automatically logs all AI interactions (prompts and responses)
+//     * when the application's logging level is set to DEBUG for the advisor package.
+//     *
+//     * @param builder Builder for creating a configured ChatClient
+//     */
+//    public BlogWriterService(ChatClient.Builder builder) {
+//        // Add SimpleLoggerAdvisor to log requests and responses for debugging
+//        this.aoaiClient = builder
+//                .defaultAdvisors(new SimpleLoggerAdvisor())
+//                .build();
+//        logger.info("BlogWriterService initialized with ChatClient and SimpleLoggerAdvisor");
+//    }
+    //public BlogWriterService(@Qualifier("ollamaClient") ChatClient ollamaClient,
+    public BlogWriterService(@Qualifier("openaiChatClient") ChatClient oaiClient,
+                             @Qualifier("openaiChatClient") ChatClient aoaiClient) {
+        // Add SimpleLoggerAdvisor to log requests and responses for debugging MH: Move to Config
+        //this.ollamaClient = ollamaClient;
+        this.oaiClient = oaiClient;
+        this.aoaiClient = aoaiClient;
+        //logger.info("BlogWriterService initialized with ChatClient and SimpleLoggerAdvisor");
+    }
+
+    public String aiTest(String message) {
+        //return ollamaClient.prompt()
+        return aoaiClient.prompt()
+                .user(message)
+                .call()
+                .content();
     }
 
     /**
@@ -77,12 +97,13 @@ public class BlogWriterService {
             2. Use simple ASCII characters only
             3. For the title, simply put it on the first line and use ALL CAPS instead of "#" symbols
             4. Separate paragraphs with blank lines
-            5. The blog post must be concise and contain NO MORE THAN 10 SENTENCES total.
+            5. The blog post must be concise and contain NO MORE THAN 15 SENTENCES total.
             """, topic);
 
         // Using Spring AI's fluent API to send the prompt and get the response
         logger.info("Sending initial draft generation prompt to AI model");
-        var draft = chatClient.prompt()
+        //var draft = ollamaClient.prompt()
+        var draft = aoaiClient.prompt()
                 .user(prompt)
                 .call()
                 .content();
@@ -112,13 +133,13 @@ public class BlogWriterService {
                 - Engagement and reader interest
                 - Professional yet conversational tone
                 - Structure and organization
-                - Strict adherence to the 10-sentence maximum length requirement
+                - Strict adherence to the 15-sentence maximum length requirement
                 
                 IMPORTANT EVALUATION RULES:
-                1. The blog MUST have no more than 10 sentences total. Count the sentences carefully.
+                1. The blog MUST have no more than 15 sentences total. Count the sentences carefully.
                 2. For the first iteration, ALWAYS respond with NEEDS_IMPROVEMENT regardless of quality.
                 3. Be extremely thorough in your evaluation and provide detailed feedback.
-                4. If the draft exceeds 10 sentences, it must receive a NEEDS_IMPROVEMENT rating.
+                4. If the draft exceeds 15 sentences, it must receive a NEEDS_IMPROVEMENT rating.
                 5. Even well-written drafts should receive suggestions for improvement in early iterations.
                 
                 Draft:
@@ -127,7 +148,8 @@ public class BlogWriterService {
 
             // Send the evaluation prompt to the AI model
             logger.info("Sending draft for editorial evaluation (iteration: {})", iteration);
-            var evaluation = chatClient.prompt()
+            //var evaluation = aoaiClient.prompt()
+            var evaluation = oaiClient.prompt()
                     .user(prompt)
                     .call()
                     .content();
@@ -157,7 +179,7 @@ public class BlogWriterService {
                     %s
                     
                     IMPORTANT REQUIREMENTS:
-                    1. The final blog post MUST NOT exceed 10 sentences total.
+                    1. The final blog post MUST NOT exceed 15 sentences total.
                     2. Maintain a clear introduction, body, and conclusion structure.
                     3. Keep formatting as plain text only (NO Markdown, HTML, or special formatting)
                     4. For the title, use ALL CAPS instead of any special formatting
@@ -169,7 +191,8 @@ public class BlogWriterService {
 
                 // Send the refinement prompt to the AI model
                 logger.info("Requesting draft revision based on feedback (iteration: {})", iteration);
-                var revisedDraft = chatClient.prompt()
+                //var revisedDraft = ollamaClient.prompt()
+                var revisedDraft = aoaiClient.prompt()
                         .user(refinePrompt)
                         .call()
                         .content();
