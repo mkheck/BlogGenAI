@@ -9,5 +9,5 @@ public record BlogGeneration(String content,
                              long completionTokens,
                              long totalTokens,
                              String modelName,
-                             List<String>editorFeedback) {
+                             List<String> editorFeedback) {
 }

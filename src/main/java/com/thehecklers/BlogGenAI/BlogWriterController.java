@@ -1,7 +1,6 @@
 package com.thehecklers.BlogGenAI;
 
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -30,11 +29,6 @@ public class BlogWriterController {
         this.blogWriterService = blogWriterService;
     }
 
-    @GetMapping
-    public String quickTest(@RequestParam(defaultValue = "Tell me a joke") String message) {
-        return blogWriterService.aiTest(message);
-    }
-
     @GetMapping("/api/blog")
     public Map<String, Object> generateBlogPost(@RequestParam String topic) {
         var result = blogWriterService.generateBlogPostWithMetadata(topic);
@@ -44,7 +38,6 @@ public class BlogWriterController {
                 "metadata", createMetadataObject(result));
     }
 
-    //private Map<String, Object> createMetadataObject(BlogGenerationResult result) {
     private Map<String, Object> createMetadataObject(BlogGeneration result) {
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("iterations", result.iterations());
