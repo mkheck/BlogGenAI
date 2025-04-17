@@ -33,12 +33,13 @@ import java.util.ArrayList;
  */
 @Service
 public class BlogWriterService {
-    private static final int MAX_ITERATIONS = 3;
+    private static final int MAX_SENTENCES = 20;
+    private static final int MAX_ITERATIONS = 4;
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private final ChatClient aiClient;
     private final RestClient remoteClient;
-    @Value("${ai.editor.url:http://localhost:8090/api/edit}")
-    private String editorUrl;
+//    @Value("${ai.editor.url}")
+    private final String editorUrl = "http://localhost:8090/api/edit";
 
     public BlogWriterService(ChatClient.Builder builder) {
         // Add SimpleLoggerAdvisor to log requests and responses for debugging
@@ -49,6 +50,7 @@ public class BlogWriterService {
                 .baseUrl(editorUrl)
                 .build();
         logger.info("BlogWriterService initialized with ChatClient and SimpleLoggerAdvisor");
+        logger.info("Remote editor service URL: {}", editorUrl);
     }
 
     public BlogGeneration generateBlogPostWithMetadata(String topic) {
@@ -68,8 +70,8 @@ public class BlogWriterService {
                 2. Use simple ASCII characters only
                 3. For the title, simply put it on the first line and use ALL CAPS instead of "#" symbols
                 4. Separate paragraphs with blank lines
-                5. The blog post must be concise and contain NO MORE THAN 15 SENTENCES total.
-                """, topic);
+                5. The blog post must be concise and contain NO MORE THAN %d SENTENCES total.
+                """, topic, MAX_SENTENCES);
 
         // Using Spring AI's fluent API to send the prompt and get the response
         logger.info("Sending initial draft generation prompt to AI model");
@@ -92,10 +94,9 @@ public class BlogWriterService {
             // Prompt the Editor agent to evaluate the current draft
             logger.info("Sending draft for editorial evaluation (iteration: {})", iteration);
             DraftCritique editorFeedback = remoteClient.post()
-                    .body(new DraftRequestSpec(15, draft))
+                    .body(new DraftRequestSpec(MAX_SENTENCES, draft))
                     .retrieve()
-                    .toEntity(DraftCritique.class)
-                    .getBody();
+                    .body(DraftCritique.class);
 
             // Check if the Editor agent approves the draft
             if (editorFeedback.approval()) {
@@ -118,7 +119,7 @@ public class BlogWriterService {
                         %s
                         
                         IMPORTANT REQUIREMENTS:
-                        1. The final blog post MUST NOT exceed 15 sentences total.
+                        1. The final blog post MUST NOT exceed %d sentences total.
                         2. Maintain a clear introduction, body, and conclusion structure.
                         3. Keep formatting as plain text only (NO Markdown, HTML, or special formatting)
                         4. For the title, use ALL CAPS instead of any special formatting
@@ -126,7 +127,7 @@ public class BlogWriterService {
                         6. Use only simple ASCII characters
                         7. Provide the complete improved version while addressing the feedback.
                         8. Count your sentences carefully before submitting.
-                        """, editorFeedback.critique(), draft);
+                        """, editorFeedback.critique(), draft, MAX_SENTENCES);
 
                 // Send the refinement prompt to the AI model
                 logger.info("Requesting draft revision based on feedback (iteration: {})", iteration);
