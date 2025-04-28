@@ -4,9 +4,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.ArrayList;
 
@@ -37,8 +36,8 @@ public class BlogWriterService {
     private static final int MAX_ITERATIONS = 4;
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private final ChatClient aiClient;
-    private final RestClient remoteClient;
-//    @Value("${ai.editor.url}")
+    //private final RestClient remoteClient;
+    private final WebClient remoteClient;
     private final String editorUrl = "http://localhost:8090/api/edit";
 
     public BlogWriterService(ChatClient.Builder builder) {
@@ -46,9 +45,13 @@ public class BlogWriterService {
         this.aiClient = builder
                 .defaultAdvisors(new SimpleLoggerAdvisor())
                 .build();
-        remoteClient = RestClient.builder()
+//        remoteClient = RestClient.builder()
+//                .baseUrl(editorUrl)
+//                .build();
+        remoteClient = WebClient.builder()
                 .baseUrl(editorUrl)
                 .build();
+
         logger.info("BlogWriterService initialized with ChatClient and SimpleLoggerAdvisor");
         logger.info("Remote editor service URL: {}", editorUrl);
     }
@@ -93,10 +96,15 @@ public class BlogWriterService {
             // PHASE 2A: EDITOR AGENT
             // Prompt the Editor agent to evaluate the current draft
             logger.info("Sending draft for editorial evaluation (iteration: {})", iteration);
+//            DraftCritique editorFeedback = remoteClient.post()
+//                    .body(new DraftRequestSpec(MAX_SENTENCES, draft))
+//                    .retrieve()
+//                    .body(DraftCritique.class);
             DraftCritique editorFeedback = remoteClient.post()
-                    .body(new DraftRequestSpec(MAX_SENTENCES, draft))
+                    .bodyValue(new DraftRequestSpec(MAX_SENTENCES, draft))
                     .retrieve()
-                    .body(DraftCritique.class);
+                    .bodyToMono(DraftCritique.class)
+                    .block();
 
             // Check if the Editor agent approves the draft
             if (editorFeedback.approval()) {
