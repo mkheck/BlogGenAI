@@ -63,7 +63,7 @@ public class BlogWriterService {
 
         // PHASE 1: WRITER AGENT
         // Prompt the Writer agent to generate the initial blog draft
-        var prompt = String.format("""
+        var prompt = """
                 You are a professional blog writer. Write a well-structured, engaging blog post about "%s".
                 The post should have a clear introduction, body paragraphs, and conclusion.
                 Include relevant examples and maintain a conversational yet professional tone.
@@ -74,7 +74,7 @@ public class BlogWriterService {
                 3. For the title, simply put it on the first line and use ALL CAPS instead of "#" symbols
                 4. Separate paragraphs with blank lines
                 5. The blog post must be concise and contain NO MORE THAN %d SENTENCES total.
-                """, topic, MAX_SENTENCES);
+                """.formatted(topic, MAX_SENTENCES);
 
         // Using Spring AI's fluent API to send the prompt and get the response
         logger.info("Sending initial draft generation prompt to AI model");
@@ -118,7 +118,7 @@ public class BlogWriterService {
 
                 // PHASE 2B: WRITER AGENT (REFINEMENT)
                 // Prompt the Writer agent to refine the draft based on the feedback
-                var refinePrompt = String.format("""
+                var refinePrompt = """
                         You are a blog writer. Improve the following blog draft based on this editorial feedback:
                         
                         Feedback: %s
@@ -135,7 +135,7 @@ public class BlogWriterService {
                         6. Use only simple ASCII characters
                         7. Provide the complete improved version while addressing the feedback.
                         8. Count your sentences carefully before submitting.
-                        """, editorFeedback.critique(), draft, MAX_SENTENCES);
+                        """.formatted(editorFeedback.critique(), draft, MAX_SENTENCES);
 
                 // Send the refinement prompt to the AI model
                 logger.info("Requesting draft revision based on feedback (iteration: {})", iteration);
