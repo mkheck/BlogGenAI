@@ -23,14 +23,14 @@ public class BlogGenConfig {
     @Value("${spring.ai.openai.endpoint:missing_endpoint}")
     String aoaiEndpoint;
 
-    @Bean(name = "azureOpenAiChatClient")
-    public ChatClient azureopenaiChatClient() {
+	@Bean(name = "azureOpenAiChatClient")
+	ChatClient azureopenaiChatClient() {
         return ChatClient.builder(azureOpenAiChatModel())
                 .build();
     }
 
-    @Bean(name = "azureOpenAiChatModel")
-    public AzureOpenAiChatModel azureOpenAiChatModel() {
+	@Bean(name = "azureOpenAiChatModel")
+	AzureOpenAiChatModel azureOpenAiChatModel() {
         return AzureOpenAiChatModel.builder()
                 .openAIClientBuilder(new OpenAIClientBuilder()
                         .credential(new KeyCredential(aoaiApiKey))
@@ -38,8 +38,8 @@ public class BlogGenConfig {
                 .build();
     }
 
-    @Bean
-    public WebClient webClient() {
+	@Bean
+	WebClient webClient() {
         TcpClient tcpClient = TcpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000) // Connection timeout
                 .doOnConnected(connection ->
